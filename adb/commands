@@ -1,0 +1,11 @@
+# List devices. Should show only 1 to be safe?
+adb devices
+
+adb push <local> <remote>
+adb pull <remote> <local>
+
+# Reboot to recovery
+adb reboot recovery
+
+# Run shell commands on device
+adb shell <command>

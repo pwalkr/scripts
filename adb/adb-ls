@@ -1,0 +1,11 @@
+#!/bin/bash
+
+args="$@"
+
+# 2 will match device and "list of devices" line
+if [ $(adb devices | grep device | wc -l) -gt 2 ]; then
+	echo "Too many devices connected?"
+	exit 1
+fi
+
+eval "adb shell ls $args"

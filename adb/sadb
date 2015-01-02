@@ -1,0 +1,28 @@
+#!/bin/bash
+
+cmd="$1"
+lfile="$2"
+rfile="$3"
+
+if [ "$cmd" != 'push' -a "$cmd" != 'pull' ]; then
+	echo "Unknown command"
+	exit 1
+fi
+
+if [ "$cmd" == 'push' -a ! -f "$lfile" ]; then
+	echo "Missing file to push"
+	exit 1
+fi
+
+if [ "$cmd" == 'pull' -a -f "$rfile" ]; then
+	echo "File already exists"
+	exit 1
+fi
+
+# 2 will match device and "list of devices" line
+if [ $(adb devices | grep device | wc -l) -gt 2 ]; then
+	echo "Too many devices connected?"
+	exit 1
+fi
+
+eval "adb $cmd '$lfile' '$rfile'"

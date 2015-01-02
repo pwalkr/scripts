@@ -1,0 +1,21 @@
+#!/bin/bash
+
+# 2 will match device and "list of devices" line
+if [ $(adb devices | grep device | wc -l) -gt 2 ]; then
+	echo "Too many devices connected?"
+	exit 1
+fi
+
+BACKUP_FILE="$(date +%Y-%m-%d)_backup.ab"
+
+FLAGS="-all"
+# Backup apk files too
+FLAGS+=" -apk"
+
+# Backup sdcard too
+FLAGS+=" -shared"
+
+# Backup system applications
+FLAGS+=" -system"
+
+eval "adb backup $FLAGS -f $BACKUP_FILE"
