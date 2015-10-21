@@ -3,15 +3,7 @@
 use warnings;
 use strict;
 
-my $BACKUP_DESTINATION = "backups";
 
-my $MAX_DAYS = 10;
-my $MAX_MONTHS = 6;
-
-
-
-my $DAILY_BACKUP_DIR = "$BACKUP_DESTINATION/daily";
-my $MONTHLY_BACKUP_DIR = "$BACKUP_DESTINATION/monthly";
 
 my $CP = "/bin/cp";
 my $RM = "/bin/rm";
@@ -19,14 +11,69 @@ my $RSYNC = "/usr/bin/rsync";
 
 
 
+my $MAX_DAYS = 10;
+my $MAX_MONTHS = 6;
+my $BACKUP_DESTINATION = "backups";
+my @BACKUP_SOURCES = ();
+
+sub usage {
+	print "Usage:\n";
+	print "    rdatesync.pl <configuration file>\n";
+	print "\n";
+	print "    The configuration file should use the following format:\n";
+	print "        destination /path/to/folder    # This is where the backups will be populated\n";
+	print "        backup /folder/to/backup       # Any line starting with 'backup' and containing\n";
+	print "                                       # a valid path will added to a list and backed up\n";
+	print "                                       # in the destination folder like so:\n";
+	print "                                       #     /path/to/dest/daily/yyyy-mm-dd/name\n";
+	exit;
+}
 
 sub readConf {
 	my $conf_file = shift;
+
+	my $source_dir;
+	my $dest_dir;
+
 	open(CFH, $conf_file) or die "Can't open configuration file";
+	while (<CFH>) {
+		if ($_ =~ /^backup\s+(.*)$/) {
+			$source_dir = $1;
+			# Source should NOT have trailing slash
+			#     - We want to copy MyFolder/Contents, not just Contents
+			$source_dir =~ s/\/?\s*$//;
+			if (-d $source_dir && $source_dir !~ /\.\.|\*/) {
+				push(@BACKUP_SOURCES, $source_dir);
+			}
+		}
+		elsif ($_ =~ /^destination\s+(.*)$/) {
+			$dest_dir = $1;
+			chomp($dest_dir);
+			if (! -d $dest_dir && $dest_dir =~ /^[\/0-9A-Za-z-._ ]+$/) {
+				$BACKUP_DESTINATION = $dest_dir;
+			}
+			elsif (-d $dest_dir && $dest_dir !~ /\.\.|\*/) {
+				$BACKUP_DESTINATION = $dest_dir;
+			}
+		}
+	}
 	close(CFH);
 }
-#&readConf($ARGV[0]);
+if (! -f $ARGV[0]) {
+	&usage();
+}
+&readConf($ARGV[0]);
 
+my $DAILY_BACKUP_DIR = "$BACKUP_DESTINATION/daily";
+my $MONTHLY_BACKUP_DIR = "$BACKUP_DESTINATION/monthly";
+
+
+
+# printSystem: print and then run a system command
+sub printSystem {
+	print "$_[0]\n";
+	system($_[0]);
+}
 
 # Compress yyyy-mm-dd into yyyymmdd for integer comparisons
 sub getDateInteger {
@@ -74,12 +121,14 @@ sub getMonth {
 	print "Unrecognized date string: $date_string\n";
 }
 
+
+
 my $date_today = `date +%Y-%m-%d`;
+chomp($date_today);
 
 my ($newest_daily, $oldest_daily, $count_daily) = &parse_backups($DAILY_BACKUP_DIR);
 my ($newest_monthly, $oldest_monthly, $count_monthly) = &parse_backups($MONTHLY_BACKUP_DIR);
 
-print "$DAILY_BACKUP_DIR/$date_today\n";
 if (! -d "$DAILY_BACKUP_DIR/$date_today") {
 	if ($newest_daily) {
 		print "Seeding new backup of $date_today from $newest_daily\n";
@@ -92,25 +141,17 @@ else {
 	exit 0;
 }
 
-my $source_directory = "Pictures"; #something input from config
-my $source_name = "Pictures"; #something input from config
-# TODO: Think about: if source already exists in backup, duplicate backup?
-#     should use rsync --link-dest instead of a blind cp?
+system("mkdir -p '$DAILY_BACKUP_DIR/$date_today'");
+foreach (@BACKUP_SOURCES) {
+	&printSystem("$RSYNC"
+		. " --archive"
+		. " --delete"
+		. " --verbose"
+		. " '$_'"
+		. " '$DAILY_BACKUP_DIR/$date_today'"
+	);
+}
 
-# Source should NOT have trailing slash
-#     - We want to copy MyFolder/Contents, not just Contents
-$source_directory =~ s/\/?\s*$//;
-
-#system(
-print(
-	"$RSYNC"
-	. " --archive"
-	. " --delete"
-	. " --verbose"
-	. " '$source_directory'"
-	. " '$DAILY_BACKUP_DIR/$date_today/$source_name'"
-	. "\n"
-);
 exit;
 
 
