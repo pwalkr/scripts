@@ -20,6 +20,12 @@ my $RSYNC = "/usr/bin/rsync";
 
 
 
+sub readConf {
+	my $conf_file = shift;
+	open(CFH, $conf_file) or die "Can't open configuration file";
+	close(CFH);
+}
+#&readConf($ARGV[0]);
 
 
 # Compress yyyy-mm-dd into yyyymmdd for integer comparisons
@@ -39,7 +45,7 @@ sub parse_backups {
 	my $current;
 	my $oldest = 0;
 	my $newest = 0;
-	if (open my $dh $directory) {
+	if (open my $dh, $directory) {
 		while (<$dh>) {
 			$current = $_;
 			if (! &getDateInteger()) {
@@ -73,17 +79,21 @@ my $date_today = `date +%Y-%m-%d`;
 my ($newest_daily, $oldest_daily, $count_daily) = &parse_backups($DAILY_BACKUP_DIR);
 my ($newest_monthly, $oldest_monthly, $count_monthly) = &parse_backups($MONTHLY_BACKUP_DIR);
 
-if (! -e "$DAILY_BACKUP_DIR/$date_today") {
-	print "Seeding new backup of $date_today from $newest_daily\n"
-	system("cd '$DAILY_BACKUP_DIR' && $CP --archive --link '$newest_daily' '$date_today'")
-	$count_daily++;
+print "$DAILY_BACKUP_DIR/$date_today\n";
+if (! -d "$DAILY_BACKUP_DIR/$date_today") {
+	if ($newest_daily) {
+		print "Seeding new backup of $date_today from $newest_daily\n";
+		system("cd '$DAILY_BACKUP_DIR' && $CP --archive --link '$newest_daily' '$date_today'");
+		$count_daily++;
+	}
 }
 else {
 	print "It looks like backup has already run for today\n";
 	exit 0;
 }
 
-my $source_directory = "" #something input from config
+my $source_directory = "Pictures"; #something input from config
+my $source_name = "Pictures"; #something input from config
 # TODO: Think about: if source already exists in backup, duplicate backup?
 #     should use rsync --link-dest instead of a blind cp?
 
@@ -91,22 +101,25 @@ my $source_directory = "" #something input from config
 #     - We want to copy MyFolder/Contents, not just Contents
 $source_directory =~ s/\/?\s*$//;
 
-system(
+#system(
+print(
 	"$RSYNC"
 	. " --archive"
 	. " --delete"
 	. " --verbose"
 	. " '$source_directory'"
-	. " '$DAILY_BACKUP_DIR/$date_today'"
+	. " '$DAILY_BACKUP_DIR/$date_today/$source_name'"
+	. "\n"
 );
+exit;
 
 
 
 # If the oldest daily starts a new month, copy it to monthly.
-if (&getMonth($oldest_daily) -ne &getMonth($newest_monthly)) {
+if (&getMonth($oldest_daily) ne &getMonth($newest_monthly)) {
 	if (! -e "$MONTHLY_BACKUP_DIR/$oldest_daily") {
-		print "Copying $DAILY_BACKUP_DIR/$oldest_daily to $MONTHLY_BACKUP_DIR/"
-		system("$CP --archive --link '$DAILY_BACKUP_DIR/$oldest_daily' '$MONTHLY_BACKUP_DIR/'")
+		print "Copying $DAILY_BACKUP_DIR/$oldest_daily to $MONTHLY_BACKUP_DIR/";
+		system("$CP --archive --link '$DAILY_BACKUP_DIR/$oldest_daily' '$MONTHLY_BACKUP_DIR/'");
 		$count_monthly++;
 	}
 }
