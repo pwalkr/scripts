@@ -5,9 +5,9 @@ use strict;
 
 
 
-my $CP = "/bin/cp";
+my $MV = "/bin/mv";
 my $RM = "/bin/rm";
-my $RSYNC = "/usr/bin/rsync";
+my $RSYNC = "/usr/bin/rsync --archive --delete --verbose";
 
 
 
@@ -92,11 +92,11 @@ sub parse_backups {
 	my $current;
 	my $oldest = 0;
 	my $newest = 0;
-	if (open my $dh, $directory) {
-		while (<$dh>) {
+	if (opendir my $dh, $directory) {
+		while (readdir $dh) {
 			$current = $_;
-			if (! &getDateInteger()) {
-				print "Unrecognized backup folder: $current\n";
+			next if $current =~ /\.\.?/;
+			if (! &getDateInteger($current)) {
 				next;
 			}
 
@@ -108,7 +108,7 @@ sub parse_backups {
 			}
 			$count++;
 		}
-		close($dh);
+		closedir($dh);
 	}
 	return ($newest, $oldest, $count);
 }
@@ -129,38 +129,30 @@ chomp($date_today);
 my ($newest_daily, $oldest_daily, $count_daily) = &parse_backups($DAILY_BACKUP_DIR);
 my ($newest_monthly, $oldest_monthly, $count_monthly) = &parse_backups($MONTHLY_BACKUP_DIR);
 
-if (! -d "$DAILY_BACKUP_DIR/$date_today") {
-	if ($newest_daily) {
-		print "Seeding new backup of $date_today from $newest_daily\n";
-		system("cd '$DAILY_BACKUP_DIR' && $CP --archive --link '$newest_daily' '$date_today'");
-		$count_daily++;
-	}
+if ($newest_daily) {
+	$RSYNC .= " --link-dest=$DAILY_BACKUP_DIR/$newest_daily";
 }
-else {
+elsif ($newest_monthly) {
+	$RSYNC .= " --link-dest=$DAILY_BACKUP_DIR/$newest_monthly";
+}
+
+if (-d "$DAILY_BACKUP_DIR/$date_today") {
 	print "It looks like backup has already run for today\n";
 	exit 0;
 }
 
 system("mkdir -p '$DAILY_BACKUP_DIR/$date_today'");
 foreach (@BACKUP_SOURCES) {
-	&printSystem("$RSYNC"
-		. " --archive"
-		. " --delete"
-		. " --verbose"
-		. " '$_'"
-		. " '$DAILY_BACKUP_DIR/$date_today'"
-	);
+	&printSystem("$RSYNC '$_' '$DAILY_BACKUP_DIR/$date_today'");
 }
-
-exit;
-
-
+$count_daily++;
 
 # If the oldest daily starts a new month, copy it to monthly.
 if (&getMonth($oldest_daily) ne &getMonth($newest_monthly)) {
 	if (! -e "$MONTHLY_BACKUP_DIR/$oldest_daily") {
-		print "Copying $DAILY_BACKUP_DIR/$oldest_daily to $MONTHLY_BACKUP_DIR/";
-		system("$CP --archive --link '$DAILY_BACKUP_DIR/$oldest_daily' '$MONTHLY_BACKUP_DIR/'");
+		print "Moving $DAILY_BACKUP_DIR/$oldest_daily to $MONTHLY_BACKUP_DIR/\n";
+		system("$MV '$DAILY_BACKUP_DIR/$oldest_daily' '$MONTHLY_BACKUP_DIR/'");
+		$count_daily--;
 		$count_monthly++;
 	}
 }
