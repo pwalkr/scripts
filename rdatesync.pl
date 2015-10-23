@@ -22,10 +22,15 @@ sub usage {
 	print "\n";
 	print "    The configuration file should use the following format:\n";
 	print "        destination /path/to/folder    # This is where the backups will be populated\n";
-	print "        backup /folder/to/backup       # Any line starting with 'backup' and containing\n";
+	print "        backup /folder/to/backup/name  # Any line starting with 'backup' and containing\n";
 	print "                                       # a valid path will added to a list and backed up\n";
 	print "                                       # in the destination folder like so:\n";
 	print "                                       #     /path/to/dest/daily/yyyy-mm-dd/name\n";
+	print "        mount /mount/point             # Similar to backup, multiple mount options\n";
+	print "                                       # can be specified. These will be mounted prior-to\n";
+	print "                                       # and disconnected from after backup.\n";
+	print "                                       # NOTE: These should be specified in your fstab\n";
+	print "                                       #       and mount-able by (" . `echo -n \$USER` . ")\n";
 	exit;
 }
 
