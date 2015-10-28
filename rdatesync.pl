@@ -69,6 +69,13 @@ if (! -f $ARGV[0]) {
 }
 &readConf($ARGV[0]);
 
+if ($#BACKUP_SOURCES < 0) {
+	die "Must specify at least one folder to back up";
+}
+if (! $BACKUP_DESTINATION) {
+	die "No destination folder specified";
+}
+
 my $DAILY_BACKUP_DIR = "$BACKUP_DESTINATION/daily";
 my $MONTHLY_BACKUP_DIR = "$BACKUP_DESTINATION/monthly";
 
