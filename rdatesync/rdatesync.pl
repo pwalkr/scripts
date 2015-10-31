@@ -5,7 +5,7 @@ use strict;
 
 
 
-my $MV = "/bin/mv";
+my $CP = "/bin/cp";
 my $RM = "/bin/rm";
 my $RSYNC = "/usr/bin/rsync --archive --delete --verbose";
 
@@ -162,9 +162,8 @@ $count_daily++;
 # If the oldest daily starts a new month, copy it to monthly.
 if (&getMonth($oldest_daily) ne &getMonth($newest_monthly)) {
 	if (! -e "$MONTHLY_BACKUP_DIR/$oldest_daily") {
-		print "Moving $DAILY_BACKUP_DIR/$oldest_daily to $MONTHLY_BACKUP_DIR/\n";
-		system("$MV '$DAILY_BACKUP_DIR/$oldest_daily' '$MONTHLY_BACKUP_DIR/'");
-		$count_daily--;
+		print "Copying $DAILY_BACKUP_DIR/$oldest_daily to $MONTHLY_BACKUP_DIR/\n";
+		system("$CP --recursive --link '$DAILY_BACKUP_DIR/$oldest_daily' '$MONTHLY_BACKUP_DIR/'");
 		$count_monthly++;
 	}
 }
