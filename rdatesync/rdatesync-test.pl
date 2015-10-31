@@ -12,10 +12,10 @@ require "libtest.pl";
 
 
 
-sub mv {
-	system("/bin/mv -f " . join(' ', @_));
-}
 sub inode {
+	if (! -f $_[0]) {
+		return -1;
+	}
 	my $inode = `/bin/ls -i $_[0]`;
 	chomp($inode);
 	return (split(/\s+/, $inode))[0];
@@ -25,25 +25,26 @@ sub md5sum {
 	chomp($md5);
 	return (split(/\s+/, $md5))[0];
 }
-sub mkdir {
-	system("/bin/mkdir -p " . join(' ', @_));
+sub run_command {
+	print "SYSTEM: $_[0]\n";
+	system "$_[0] 2>&1 | sed 's/^/    /'";
+}
+sub mv {
+	&run_command("/bin/mv -f " . join(' ', @_));
 }
 sub rm {
-	system("/bin/rm -rf " . join(' ', @_));
+	&run_command("/bin/rm -rf " . join(' ', @_));
 }
+
 
 
 my $WORKSPACE = "/tmp/_test_sandbox";
-my $BACKUP_TO_HERE = "$WORKSPACE/backups"
+my $BACKUP_TO_HERE = "$WORKSPACE/backups";
 
-sub setup_test {
-	&rm($WORKSPACE);
-	&mkdir($WORKSPACE);
-}
 
 
 sub test_first_run {
-	my $workspace = "/tmp/_test_sandbox";
+	my $workspace = "/tmp/sandbox";
 	my $backup_to_here = "$workspace/backups";
 	my $backup_dir_name = "ThisIsMyBackup";
 	my $backup_this_dir = "$workspace/$backup_dir_name";
@@ -63,8 +64,8 @@ sub test_first_run {
 	&assert_match($RDATESYNC, 'rdatesync.pl$');
 	&assert_file($RDATESYNC);
 
-	&mkdir($workspace);
-	&mkdir($backup_this_dir);
+	&run_command("mkdir -p $workspace");
+	&run_command("mkdir -p $backup_this_dir");
 	open(my $tfh, '>', $backup_this_file) or (&rm($workspace) and &report_test_fail("Failed to open test file for writing"));
 	for (1..100) {
 		print $tfh int(rand(10));
@@ -76,7 +77,7 @@ sub test_first_run {
 	print $cfh "backup $backup_this_dir\n";
 	close($cfh);
 
-	system("perl $RDATESYNC $test_conf >/dev/null 2>&1");
+	&run_command("perl $RDATESYNC $test_conf");
 
 	if (! &assert_equal(
 			&md5sum("$backup_to_here/daily/$date_today/$backup_dir_name/$backup_file_name"),
@@ -96,8 +97,9 @@ sub test_first_run {
 	}
 
 	&mv("$backup_to_here/daily/$date_today", "$backup_to_here/daily/$date_yesterday");
+	printf "\n";
 
-	system("perl $RDATESYNC $test_conf >/dev/null 2>&1");
+	&run_command("perl $RDATESYNC $test_conf");
 
 	if (! &assert_equal(
 			&inode("$backup_to_here/daily/$date_today/$backup_dir_name/$backup_file_name"),
@@ -123,7 +125,7 @@ sub test_first_run {
 	&rm("$backup_to_here/daily/$date_today");
 	&mv("$backup_to_here/daily/$date_yesterday", "$backup_to_here/daily/$date_last_month");
 
-	system("perl $RDATESYNC $test_conf >/dev/null 2>&1");
+	&run_command("perl $RDATESYNC $test_conf");
 
 	# rdatesync should move last month's dir to monthly backups
 	if (! &assert_equal(
@@ -145,10 +147,10 @@ sub test_first_run {
 		return &report_test_fail("Failed to duplicate backups from yesterday");
 	}
 
-	&rm("$backup_to_here/daily/$date_today");
-	system("echo ' . int(rand(10)) . ' >> $backup_this_file");
+	&run_command("rm -rf $backup_to_here/daily/$date_today");
+	&run_command("echo ' . int(rand(10)) . ' >> $backup_this_file");
 
-	system("perl $RDATESYNC $test_conf >/dev/null 2>&1");
+	&run_command("perl $RDATESYNC $test_conf");
 
 	&assert_equal(
 		&md5sum($backup_this_file),
