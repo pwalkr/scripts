@@ -157,13 +157,14 @@ system("mkdir -p '$DAILY_BACKUP_DIR/$date_today'");
 foreach (@BACKUP_SOURCES) {
 	&printSystem("$RSYNC '$_' '$DAILY_BACKUP_DIR/$date_today'");
 }
+$newest_daily = $date_today;
 $count_daily++;
 
-# If the oldest daily starts a new month, copy it to monthly.
-if (&getMonth($oldest_daily) ne &getMonth($newest_monthly)) {
-	if (! -e "$MONTHLY_BACKUP_DIR/$oldest_daily") {
-		print "Copying $DAILY_BACKUP_DIR/$oldest_daily to $MONTHLY_BACKUP_DIR/\n";
-		system("$CP --recursive --link '$DAILY_BACKUP_DIR/$oldest_daily' '$MONTHLY_BACKUP_DIR/'");
+# If the newest daily starts a new month, copy it to monthly.
+if (0 eq $newest_monthly or &getMonth($newest_daily) ne &getMonth($newest_monthly)) {
+	if (! -e "$MONTHLY_BACKUP_DIR/$newest_daily") {
+		print "Copying $DAILY_BACKUP_DIR/$newest_daily to $MONTHLY_BACKUP_DIR/\n";
+		system("$CP --recursive --link '$DAILY_BACKUP_DIR/$newest_daily' '$MONTHLY_BACKUP_DIR/'");
 		$count_monthly++;
 	}
 }
