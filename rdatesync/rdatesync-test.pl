@@ -245,8 +245,4 @@ sub test_first_run {
 
 &test_first_run();
 
-
-
-$FATAL_ERROR = 0;
-
-exit;
+&end_tests();

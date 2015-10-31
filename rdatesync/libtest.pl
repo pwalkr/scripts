@@ -40,6 +40,9 @@ sub report_assert_fail {
 	$ASSERT_FAIL++;
 	return 0
 }
+sub end_tests {
+	$FATAL_ERROR = 0;
+}
 sub assert_equal {
 	if ($#_ < 0) {
 		return &report_assert_pass();
