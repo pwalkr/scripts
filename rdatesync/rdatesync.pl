@@ -155,8 +155,9 @@ if (-d "$DAILY_BACKUP_DIR/$date_today") {
 
 system("mkdir -p '$DAILY_BACKUP_DIR/$date_today'");
 foreach (@BACKUP_SOURCES) {
-	&printSystem("$RSYNC '$_' '$DAILY_BACKUP_DIR/$date_today'");
+	$RSYNC .= " '$_'";
 }
+&printSystem("$RSYNC '$DAILY_BACKUP_DIR/$date_today'");
 $newest_daily = $date_today;
 $count_daily++;
 
