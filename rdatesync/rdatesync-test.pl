@@ -239,8 +239,41 @@ sub test_first_backup {
 	&report_test_pass();
 }
 
+sub test_second_backup {
+	my $date_today = `date +%Y-%m-%d`;
+	my $date_yesterday = `date --date="yesterday" +%Y-%m-%d`;
+	chomp($date_today);
+	chomp($date_yesterday);
+	my $name;
+	my $tpath;
+	my $ypath;
+
+	&setup();
+
+	&run_backup();
+
+	&assert_dir("$DEST_DIR/daily/$date_today") or return &report_test_fail("Failed to make a first backup");
+	&run_command("mv $DEST_DIR/daily/$date_today $DEST_DIR/daily/$date_yesterday");
+
+	&run_backup();
+
+	foreach (@BACKUP_FILES) {
+		$name = $_;
+		$name =~ s/^.*\///;
+		$tpath = `find "$DEST_DIR/daily/$date_today" -name $name`;
+		$ypath = `find "$DEST_DIR/daily/$date_yesterday" -name $name`;
+		chomp($tpath, $ypath);
+		if (! &assert_equal(&inode($tpath), &inode($ypath))) {
+			return &report_test_fail("Backup failed to copy inode for file");
+		}
+	}
+
+	&report_test_pass();
+}
+
 
 
 &test_first_backup();
+&test_second_backup();
 
 &end_tests();
