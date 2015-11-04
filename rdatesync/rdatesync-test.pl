@@ -38,8 +38,46 @@ sub rm {
 
 
 
-my $WORKSPACE = "/tmp/_test_sandbox";
-my $BACKUP_TO_HERE = "$WORKSPACE/backups";
+my $WORKSPACE = "/tmp/rds_sandbox";
+my $DEST_DIR = "$WORKSPACE/backups";
+my $TEST_CONF = "$WORKSPACE/test.conf";
+my @BACKUP_DIRS = (
+	"$WORKSPACE/sources/dir1",
+	"$WORKSPACE/sources/nested/dir2"
+);
+my @BACKUP_FILES = (
+	"$BACKUP_DIRS[0]/file1",
+	"$BACKUP_DIRS[0]/file2",
+	"$BACKUP_DIRS[1]/file3",
+	"$BACKUP_DIRS[1]/subdir/file4"
+);
+
+sub run_backup {
+	print "\n";
+	&run_command("perl $RDATESYNC $TEST_CONF");
+	print "\n";
+}
+
+sub setup {
+	print "Setting up for test\n";
+	system("rm -rf $WORKSPACE");
+
+	&run_command("mkdir --parents $WORKSPACE");
+	foreach (@BACKUP_FILES) {
+		my $dirname = $_;
+		$dirname =~ s/\/[^\/]+$//;
+		&run_command("mkdir --parents $dirname");
+		# Seed file with it's own path
+		&run_command("echo '$_' > '$_'");
+	}
+
+	open my $cf, '>', $TEST_CONF or die "Failed to open test configuration for writing";
+	print $cf "destination $DEST_DIR\n";
+	foreach (@BACKUP_DIRS) {
+		print $cf "backup $_\n";
+	}
+	close $cf;
+}
 
 
 
@@ -167,8 +205,42 @@ sub test_first_run {
 	&report_test_pass();
 }
 
+sub test_first_backup {
+	my $date_today = `date +%Y-%m-%d`;
+	chomp($date_today);
+	my $name;
+	my $path;
+
+	&setup();
+
+	&run_backup();
+
+	foreach (@BACKUP_DIRS) {
+		$name = $_;
+		$name =~ s/^.*\///;
+		if (! &assert_dir("$DEST_DIR/daily/$date_today/$name")) {
+			return &report_test_fail("Failed to produce daily backup directory");
+		}
+	}
+
+	foreach (@BACKUP_FILES) {
+		$name = $_;
+		$name =~ s/^.*\///;
+		$path = `find "$DEST_DIR/daily/$date_today" -name $name`;
+		chomp($path);
+		if (! &assert_not_equal($path, '')) {
+			return &report_test_fail("Failed to back up file '$_'");
+		}
+		if (! &assert_equal(&md5sum($path), &md5sum($_))) {
+			return &report_test_fail("Backup file does not match source");
+		}
+	}
+
+	&report_test_pass();
+}
 
 
-&test_first_run();
+
+&test_first_backup();
 
 &end_tests();
