@@ -78,14 +78,9 @@ if (! $BACKUP_DESTINATION) {
 
 my $DAILY_BACKUP_DIR = "$BACKUP_DESTINATION/daily";
 my $MONTHLY_BACKUP_DIR = "$BACKUP_DESTINATION/monthly";
+my $TMP_BACKUP_LOG = "$BACKUP_DESTINATION/_rds-backup.log";
 
 
-
-# printSystem: print and then run a system command
-sub printSystem {
-	print "$_[0]\n";
-	system($_[0]);
-}
 
 # Compress yyyy-mm-dd into yyyymmdd for integer comparisons
 sub getDateInteger {
@@ -157,7 +152,18 @@ system("mkdir -p '$DAILY_BACKUP_DIR/$date_today'");
 foreach (@BACKUP_SOURCES) {
 	$RSYNC .= " '$_'";
 }
-&printSystem("$RSYNC '$DAILY_BACKUP_DIR/$date_today'");
+open(LOG, '>', "$TMP_BACKUP_LOG") or die "Failed to create backup log";
+print LOG  "$RSYNC '$DAILY_BACKUP_DIR/$date_today'\n";
+print      "$RSYNC '$DAILY_BACKUP_DIR/$date_today'\n";
+open(RCMD, "$RSYNC '$DAILY_BACKUP_DIR/$date_today' 2>&1 |") or die "Failed to start backup routine";
+while (<RCMD>) {
+	print LOG "$_";
+	print     "$_";
+}
+close(RCMD);
+close(LOG);
+rename($TMP_BACKUP_LOG, "$DAILY_BACKUP_DIR/$date_today/backup.log");
+
 $newest_daily = $date_today;
 $count_daily++;
 
