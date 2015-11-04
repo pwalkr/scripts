@@ -137,10 +137,7 @@ my ($newest_daily, $oldest_daily, $count_daily) = &parse_backups($DAILY_BACKUP_D
 my ($newest_monthly, $oldest_monthly, $count_monthly) = &parse_backups($MONTHLY_BACKUP_DIR);
 
 if ($newest_daily) {
-	$RSYNC .= " --link-dest=$DAILY_BACKUP_DIR/$newest_daily";
-}
-elsif ($newest_monthly) {
-	$RSYNC .= " --link-dest=$DAILY_BACKUP_DIR/$newest_monthly";
+	$RSYNC .= " --link-dest='$DAILY_BACKUP_DIR/$newest_daily'";
 }
 
 if (-d "$DAILY_BACKUP_DIR/$date_today") {
