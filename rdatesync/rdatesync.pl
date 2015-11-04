@@ -7,7 +7,7 @@ use strict;
 
 my $CP = "/bin/cp";
 my $RM = "/bin/rm";
-my $RSYNC = "/usr/bin/rsync --archive --delete --verbose --verbose";
+my $RSYNC = "/usr/bin/rsync --archive --delete";
 
 
 
