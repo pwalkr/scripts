@@ -79,6 +79,8 @@ if (! $BACKUP_DESTINATION) {
 my $DAILY_BACKUP_DIR = "$BACKUP_DESTINATION/daily";
 my $MONTHLY_BACKUP_DIR = "$BACKUP_DESTINATION/monthly";
 my $TMP_BACKUP_LOG = "$BACKUP_DESTINATION/_rds-backup.log";
+system("mkdir -p '$DAILY_BACKUP_DIR'");
+system("mkdir -p '$MONTHLY_BACKUP_DIR'");
 
 
 
@@ -145,7 +147,6 @@ if (-d "$DAILY_BACKUP_DIR/$date_today") {
 	exit 0;
 }
 
-system("mkdir -p '$DAILY_BACKUP_DIR/$date_today'");
 foreach (@BACKUP_SOURCES) {
 	$RSYNC .= " '$_'";
 }
