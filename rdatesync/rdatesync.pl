@@ -153,14 +153,58 @@ foreach (@BACKUP_SOURCES) {
 open(LOG, '>', "$TMP_BACKUP_LOG") or die "Failed to create backup log";
 print LOG  "$RSYNC '$DAILY_BACKUP_DIR/$date_today'\n";
 print      "$RSYNC '$DAILY_BACKUP_DIR/$date_today'\n";
-open(RCMD, "$RSYNC '$DAILY_BACKUP_DIR/$date_today' 2>&1 |") or die "Failed to start backup routine";
-while (<RCMD>) {
-	print LOG "$_";
-	print     "$_";
-}
-close(RCMD);
 close(LOG);
+system("$RSYNC '$DAILY_BACKUP_DIR/$date_today'");
 rename($TMP_BACKUP_LOG, "$DAILY_BACKUP_DIR/$date_today/backup.log");
+print "Checking changes\n";
+my @changeList = ();
+my $inode1;
+my $inode2;
+if ($newest_daily) {
+	if (open FIND, "cd $DAILY_BACKUP_DIR/$newest_daily; find . -type f |") {
+		while(<FIND>) {
+			chomp($_);
+			if (-f "$DAILY_BACKUP_DIR/$date_today/$_") {
+				$inode1 = `ls -l "$DAILY_BACKUP_DIR/$newest_daily/$_" | awk '{print \$1}'`;
+				$inode2 = `ls -l "$DAILY_BACKUP_DIR/$date_today/$_"| awk '{print \$1}'`;
+				chomp($inode1, $inode2);
+				if ($inode1 ne $inode2) {
+					print             "$_\tmodified\n";
+					push(@changeList, "$_\tmodified");
+				}
+			}
+			else {
+				print             "$_\tremoved\n";
+				push(@changeList, "$_\tremoved");
+			}
+		}
+		close(FIND);
+	}
+	if (open FIND, "cd $DAILY_BACKUP_DIR/$date_today; find . -type f |") {
+		while(<FIND>) {
+			chomp($_);
+			if (! -f "$DAILY_BACKUP_DIR/$date_today/$_") {
+				print             "$_\tnew\n";
+				push(@changeList, "$_\tnew");
+			}
+		}
+		close(FIND);
+	}
+}
+else {
+	if (open FIND, "cd $DAILY_BACKUP_DIR/$date_today; find . -type f |") {
+		while(<FIND>) {
+			chomp($_);
+			print             "$_\tnew\n";
+			push(@changeList, "$_\tnew");
+		}
+		close(FIND);
+	}
+}
+open(LOG, '>>', "$DAILY_BACKUP_DIR/$date_today/backup.log") or die "Failed to append backup log";
+print LOG join(@changeList, "\n");
+print LOG "\n";
+close(LOG);
 
 $newest_daily = $date_today;
 $count_daily++;
